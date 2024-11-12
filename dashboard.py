@@ -9,12 +9,11 @@ import pandas as pd
 app = dash.Dash(__name__)
 
 server = app.server
-# 챔피언 메인 스탯 데이터 로드
-with open("data/champion_main_stats.pkl", "rb") as f:
+
+with open("dashboard_data/champion_stats.pkl", "rb") as f:
     champion_dataframes = pickle.load(f)
 
-# 태그별 평균 스탯 데이터 로드
-with open("data/tag_avg_stats.pkl", "rb") as f:
+with open("dashboard_data/tag_avg_stats.pkl", "rb") as f:
     tag_avg_dataframes = pickle.load(f)
 
 # 태그와 챔피언 옵션 생성
