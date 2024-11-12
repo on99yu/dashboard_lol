@@ -8,6 +8,7 @@ import pandas as pd
 # Dash 앱 초기화
 app = dash.Dash(__name__)
 
+server = app.server
 # 챔피언 메인 스탯 데이터 로드
 with open("data/champion_main_stats.pkl", "rb") as f:
     champion_dataframes = pickle.load(f)
