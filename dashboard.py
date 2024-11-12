@@ -7,9 +7,9 @@ import pandas as pd
 
 # Dash 앱 초기화
 app = dash.Dash(__name__)
-
 server = app.server
 
+# 데이터 로드
 with open("dashboard_data/champion_stats.pkl", "rb") as f:
     champion_dataframes = pickle.load(f)
 
@@ -25,32 +25,34 @@ app.layout = html.Div([
     html.H1("챔피언 성능 대시보드", style={'textAlign': 'center', 'color': '#4CAF50'}),
     
     html.Div([
-        html.Label("역할군 선택"),
-        dcc.Dropdown(
-            id='tag-dropdown',
-            options=tag_options,
-            value=[],
-            multi=True
-        ),
+        html.Div([
+            html.Label("역할군 선택"),
+            dcc.Dropdown(
+                id='tag-dropdown',
+                options=tag_options,
+                value=[],
+                multi=True
+            ),
+            
+            html.Label("챔피언 선택"),
+            dcc.Dropdown(
+                id='champion-dropdown',
+                options=champion_options,
+                value=[champion_options[0]['value']],
+                multi=True
+            ),
+            
+            html.Label("스탯 선택"),
+            dcc.Dropdown(
+                id='stat-dropdown',
+                value='챔피언에게 가한 피해량'  # 기본값 설정
+            )
+        ], style={'width': '30%', 'padding': '10px', 'textAlign': 'center'}),
         
-        html.Label("챔피언 선택"),
-        dcc.Dropdown(
-            id='champion-dropdown',
-            options=champion_options,
-            value=[champion_options[0]['value']],
-            multi=True
-        ),
-        
-        html.Label("스탯 선택"),
-        dcc.Dropdown(
-            id='stat-dropdown',
-            value='챔피언에게 가한 피해량'  # 기본값 설정
-        )
-    ], style={'width': '10%', 'display': 'inline-block', 'padding': '10px'}),
-    
-    html.Div([
-        dcc.Graph(id='stat-graph')
-    ], style={'width': '70%', 'display': 'inline-block'})
+        html.Div([
+            dcc.Graph(id='stat-graph', style={'height': '80vh'})
+        ], style={'width': '80%'})
+    ], style={'display': 'flex', 'flexDirection': 'column', 'alignItems': 'center'})
 ])
 
 # 콜백 정의
