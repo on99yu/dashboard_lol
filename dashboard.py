@@ -32,6 +32,15 @@ position_options = [{'label': position, 'value': position} for position in champ
 role_options = [{'label': role, 'value': role} for role in champion_winrate_by_role[champion_options[0]['value']].keys()]
 
 app.layout = html.Div([
+    html.Div(
+        [
+            html.Span("P", style={'fontSize': '36px', 'fontWeight': 'bold', 'color': '#8B5E3C'}),  # 진한 색상과 큰 크기로 강조
+            html.Span("otato", style={'fontSize': '24px', 'color': '#C5A880'}),                    # 나머지 글자는 연한 감자색
+            html.Span("S", style={'fontSize': '36px', 'fontWeight': 'bold', 'color': '#8B5E3C'}),  # 진한 색상과 큰 크기로 강조
+            html.Span("ays", style={'fontSize': '24px', 'color': '#C5A880'})                       # 나머지 글자는 연한 감자색
+        ],
+        style={'position': 'absolute', 'top': '10px', 'left': '30px', 'display': 'flex', 'alignItems': 'center'}
+    ),
     html.H1("챔피언 성능 및 통계 대시보드", style={'textAlign': 'center', 'color': '#4CAF50'}),
     dcc.Tabs(id="tabs", value='tab-1', children=[
         # 탭 1: 챔피언별 상대 역할군에 따른 승률
