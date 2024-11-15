@@ -5,7 +5,6 @@ import pickle
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import numpy as np
 
 # Dash 앱 초기화
 app = dash.Dash(__name__, suppress_callback_exceptions=True)
@@ -25,25 +24,19 @@ with open("dashboard_data/champion_win_pick_rate.pkl", "rb") as f:
 with open("dashboard_data/champion_winrate_by_role.pkl", "rb") as f:
     champion_winrate_by_role = pickle.load(f)
 
-# 옵션 설정
+with open("dashboard_data/winrate_per_champion.pkl", "rb") as f:
+    winrate_per_champion = pickle.load(f)
+
 tag_options = [{'label': tag, 'value': tag} for tag in tag_avg_dataframes.keys()]
 champion_options = [{'label': name, 'value': name} for name in champion_dataframes.keys()]
 position_options = [{'label': position, 'value': position} for position in champion_win_pick_rate.keys()]
 role_options = [{'label': role, 'value': role} for role in champion_winrate_by_role[champion_options[0]['value']].keys()]
 
+# "챔피언 상대 승률" 탭 추가
 app.layout = html.Div([
-    html.Div(
-        [
-            html.Span("P", style={'fontSize': '36px', 'fontWeight': 'bold', 'color': '#8B5E3C'}),  # 진한 색상과 큰 크기로 강조
-            html.Span("otato", style={'fontSize': '24px', 'color': '#C5A880'}),                    # 나머지 글자는 연한 감자색
-            html.Span("S", style={'fontSize': '36px', 'fontWeight': 'bold', 'color': '#8B5E3C'}),  # 진한 색상과 큰 크기로 강조
-            html.Span("ays", style={'fontSize': '24px', 'color': '#C5A880'})                       # 나머지 글자는 연한 감자색
-        ],
-        style={'position': 'absolute', 'top': '10px', 'left': '30px', 'display': 'flex', 'alignItems': 'center'}
-    ),
     html.H1("챔피언 성능 및 통계 대시보드", style={'textAlign': 'center', 'color': '#4CAF50'}),
     dcc.Tabs(id="tabs", value='tab-1', children=[
-        # 탭 1: 챔피언별 상대 역할군에 따른 승률
+        # 기존 탭들 유지
         dcc.Tab(label='챔피언별 상대 역할군에 따른 승률', value='tab-1', children=[
             html.Div([
                 html.Div([
@@ -58,9 +51,18 @@ app.layout = html.Div([
                 ], style={'width': '80%', 'padding': '20px'})
             ], style={'display': 'flex'})
         ]),
-
-        # 탭 2: 챔피언 승률 및 픽률
-        dcc.Tab(label='챔피언 승률 및 픽률', value='tab-2', children=[
+    # 새로운 탭: 챔피언 상대 승률
+        dcc.Tab(label='챔피언 상대 승률', value='tab-2', children=[
+            html.Div([
+                html.Div([
+                    html.Label("챔피언 선택"),
+                    dcc.Dropdown(id='champion-dropdown-compare', options=champion_options, value=champion_options[0]['value']),
+                ], style={'width': '20%', 'padding': '20px', 'backgroundColor': '#F0F0F0', 'height': '90vh', 'overflowY': 'scroll'}),
+                
+                html.Div(id='champion-compare-table', style={'width': '80%', 'padding': '20px'})
+            ], style={'display': 'flex'})
+        ]),
+        dcc.Tab(label='챔피언 승률 및 픽률', value='tab-3', children=[
             html.Div([
                 html.Div([
                     html.Label("포지션 선택"),
@@ -71,8 +73,7 @@ app.layout = html.Div([
             ], style={'display': 'flex'})
         ]),
 
-        # 탭 3: 챔피언 성능 대시보드
-        dcc.Tab(label='챔피언 성능 대시보드', value='tab-3', children=[
+        dcc.Tab(label='챔피언 성능 대시보드', value='tab-4', children=[
             html.Div([
                 html.Div([
                     html.Label("역할군 선택"),
@@ -87,7 +88,7 @@ app.layout = html.Div([
                     dcc.Graph(id='stat-graph', style={'height': '80vh'})
                 ], style={'width': '80%', 'padding': '20px'})
             ], style={'display': 'flex'})
-        ])
+        ]),
     ])
 ])
 
@@ -179,90 +180,15 @@ def sort_winrate(df, sort_order):
 def update_combined_graph(selected_champion, selected_role):
     if selected_champion in champion_winrate_by_role and selected_role in champion_winrate_by_role[selected_champion]:
         df = champion_winrate_by_role[selected_champion][selected_role].copy()
-
-        # 전체 승률 가져오기
         overall_winrate = champion_win_pick_rate['ALL'].loc[champion_win_pick_rate['ALL']['챔피언'] == selected_champion, '승률'].values[0]
-
-        # 승률을 퍼센트로 변환
         df['승률'] = df['승률'] * 100
-
-        # 이중 Y축 그래프 생성
         fig = go.Figure()
-
-        # 표본수 막대 그래프 (배경에 배치)
-        fig.add_trace(
-            go.Bar(x=df.index, y=df['표본 수'], name='표본 수', yaxis="y2", marker_color='#FFCC99', opacity=0.6, width=0.4)
-        )
-
-        # 승률 선 그래프 (막대 그래프 앞에 배치)
-        fig.add_trace(
-            go.Scatter(
-                x=df.index, 
-                y=df['승률'], 
-                mode='lines+markers', 
-                name='승률 (%)', 
-                yaxis="y1", 
-                line=dict(width=3, color='#6699CC'),  # 선 색상을 부드러운 파란색으로 설정
-                marker=dict(symbol='circle', size=8, color='#6699CC')
-            )
-        )
-
-        # 각 데이터 포인트에 텍스트 주석 추가
-        annotations = [
-            dict(
-                x=x, 
-                y=y, 
-                text=f"{y:.1f}%", 
-                xanchor='center', 
-                yanchor='bottom', 
-                showarrow=False,
-                font=dict(color='#6699CC')
-            ) for x, y in zip(df.index, df['승률'])
-        ]
-
-        # 챔피언 이름을 왼쪽 위에 진하게 표시
-        annotations.append(
-            dict(
-                xref="paper", 
-                yref="paper", 
-                x=0, 
-                y=1.15, 
-                text=f"<b>{selected_champion}</b>", 
-                showarrow=False,
-                font=dict(size=20, color="black"),
-                xanchor="left"
-            )
-        )
-
-        # "역할군 상대 승률" 텍스트를 그래프 왼쪽 위에 추가
-        annotations.append(
-            dict(
-                xref="paper", 
-                yref="paper", 
-                x=0, 
-                y=1.05, 
-                text=f"{selected_role} 상대 승률", 
-                showarrow=False,
-                font=dict(size=16, color="black"),
-                xanchor="left"
-            )
-        )
-
-        # 전체 승률을 그래프 오른쪽 위에 추가, 선 그래프 색과 동일하게
-        annotations.append(
-            dict(
-                xref="paper", 
-                yref="paper", 
-                x=1, 
-                y=1.05, 
-                text=f"전체 승률: {overall_winrate*100:.2f}%", 
-                showarrow=False,
-                font=dict(size=16, color='#6699CC'),
-                xanchor="right"
-            )
-        )
-
-        # 레이아웃 설정 (이중 Y축 및 주석 추가)
+        fig.add_trace(go.Bar(x=df.index, y=df['표본 수'], name='표본 수', yaxis="y2", marker_color='#FFCC99', opacity=0.6, width=0.4))
+        fig.add_trace(go.Scatter(x=df.index, y=df['승률'], mode='lines+markers', name='승률 (%)', yaxis="y1", line=dict(width=3, color='#6699CC')))
+        annotations = [dict(x=x, y=y, text=f"{y:.1f}%", xanchor='center', yanchor='bottom', showarrow=False,font=dict(color='#6699CC')) for x, y in zip(df.index, df['승률'])]
+        annotations.append(dict(xref="paper", yref="paper", x=0, y=1.15, text=f"<b>{selected_champion}</b>", showarrow=False,font=dict(size=20, color="black"),xanchor="left"))
+        annotations.append(dict(xref="paper", yref="paper", x=0, y=1.05, text=f"{selected_role} 상대 승률", showarrow=False,font=dict(size=16, color="black"),xanchor="left"))
+        annotations.append(dict(xref="paper", yref="paper", x=1, y=1.05, text=f"전체 승률: {overall_winrate*100:.2f}%", showarrow=False,font=dict(size=16, color='#6699CC'),xanchor="right"))
         fig.update_layout(
             title="",  # 제목을 빈 문자열로 설정
             xaxis_title="상대 역할군 명수",
@@ -274,6 +200,31 @@ def update_combined_graph(selected_champion, selected_role):
         return fig
     else:
         return {}
+
+# 콜백: 챔피언 상대 승률 테이블 업데이트
+@app.callback(
+    Output('champion-compare-table', 'children'),
+    [Input('champion-dropdown-compare', 'value')]
+)
+def update_champion_compare_table(selected_champion):
+    if selected_champion in winrate_per_champion:
+        df = winrate_per_champion[selected_champion].copy()
+        df['승률'] = (df['승률'] * 100).round(2).astype(str) + '%'  # 승률을 퍼센트로 변환 및 소수점 둘째 자리까지 표시
+        table = html.Table([
+            html.Thead(
+                html.Tr([html.Th(col, style={'borderBottom': '1px solid black', 'padding': '8px'}) for col in df.columns])
+            ),
+            html.Tbody([
+                html.Tr([
+                    html.Td(df.iloc[i][col], style={'padding': '5px', 'textAlign': 'center', 'borderBottom': '1px solid #ddd'}) for col in df.columns
+                ]) for i in range(len(df))
+            ])
+        ], style={'width': '100%', 'margin': '20px 0', 'textAlign': 'center', 'border': '1px solid black', 'borderCollapse': 'collapse'})
+
+        header = html.H4(f"{selected_champion} 상대 챔피언 승률", style={'textAlign': 'center', 'marginBottom': '10px'})
+        return [header, table]
+    else:
+        return "선택된 챔피언에 대한 데이터가 없습니다."
 
 # 앱 실행
 if __name__ == '__main__':
